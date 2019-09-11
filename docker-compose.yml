@@ -1,30 +1,33 @@
-# NOTE: This docker-compose.yml is meant to be just an example of how
-# you could accomplish this on your own. It is not intended to work in
-# all use-cases and must be adapted to fit your needs. This is merely
-# a guideline.
-
-# See docs.getsentry.com/on-premise/server/ for full
-# instructions
-
 version: '3.4'
 
+# The contents of those fields are ignored by Compose, but they can be inserted in your resource definitions
 x-defaults: &defaults
   restart: unless-stopped
+
+  # string containing a path to the build context
   build:
+    # Either a path to a directory containing a Dockerfile, or a url to a git repository.
     context: .
+    # Add build arguments, which are environment variables accessible only during the build process
     args:
       SENTRY_IMAGE: ${SENTRY_IMAGE}
+  # dependency between services
   depends_on:
     - redis
     - postgres
     - memcached
     - smtp
+
+  # Declare default environment variables in file
   env_file: .env
+
+  # Environment variables in Compose
   environment:
     SENTRY_MEMCACHED_HOST: memcached
     SENTRY_REDIS_HOST: redis
     SENTRY_POSTGRES_HOST: postgres
     SENTRY_EMAIL_HOST: smtp
+  # Mount host paths or named volumes, specified as sub-options to a service.
   volumes:
     - sentry-data:/var/lib/sentry/files
 
@@ -32,6 +35,7 @@ x-defaults: &defaults
 services:
   smtp:
     restart: unless-stopped
+    # Specify the image to start the container from
     image: tianon/exim4
 
   memcached:
@@ -43,27 +47,46 @@ services:
     image: redis:3.2-alpine
 
   postgres:
+    # restart policy
     restart: unless-stopped
     image: postgres:9.5
     volumes:
       - sentry-postgres:/var/lib/postgresql/data
 
   web:
+    # t is also possible to partially override values in extension fields using the YAML merge type.
     <<: *defaults
+    # Expose ports
     ports:
       - '9000:9000'
 
   cron:
     <<: *defaults
+    # Override the default command
     command: run cron
 
   worker:
     <<: *defaults
+    # Override the default command
     command: run worker
 
+#  https-portal:
+#    image: steveltn/https-portal
+#    ports:
+#      - '80:80'
+#      - '443:443'
+#    depends_on:
+#      - web
+#    restart: unless-stopped
+#    environment:
+#      DOMAINS: '${DOMAIN} -> http://web:9000'
+#      STAGE: 'production'
 
+
+# Named volume
 volumes:
     sentry-data:
+      # If set to true, specifies that this volume has been created outside of Compose
       external: true
     sentry-postgres:
       external: true
